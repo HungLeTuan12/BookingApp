@@ -3,6 +3,8 @@ package com.example.demo.model;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 //@JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -19,8 +21,9 @@ public class UserModel {
     private boolean enabled;
     private MajorModel major;
     private Integer totalPages;
+    private BigDecimal fee;
 
-    public UserModel(Long id, String avatar, String fullName, String userName,String phone, String email,String description, Long roleId, boolean enabled, MajorModel major, String tt) {
+    public UserModel(Long id, String avatar, String fullName, String userName, String phone, String email, String description, Long roleId, boolean enabled, MajorModel major, String tt, BigDecimal fee) {
         this.id = id;
         this.avatar = avatar;
         this.fullName = fullName;
@@ -32,5 +35,6 @@ public class UserModel {
         this.enabled = enabled;
         this.major = major;
         this.trangthai = tt;
+        this.fee = fee;
     }
 }

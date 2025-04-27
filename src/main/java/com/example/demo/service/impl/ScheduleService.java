@@ -73,6 +73,7 @@ public class ScheduleService implements IScheduleService {
             timeSlot.setDate(dateStr);
             timeSlot.setHourId(hour.getId());
             timeSlot.setHourName(hour.getName());
+            timeSlot.setFee(doctor.getFee());
             timeSlots.add(timeSlot);
         }
 
@@ -100,6 +101,7 @@ public class ScheduleService implements IScheduleService {
             timeSlot.setHourName(hour.getName());
             timeSlot.setDoctorName(schedule.getDoctor().getFullname());
             timeSlot.setDoctorId(schedule.getDoctor().getId());
+            timeSlot.setFee(schedule.getDoctor().getFee());
             timeSlots.add(timeSlot);
         }
 

@@ -52,6 +52,7 @@ public class UserController {
                 userDTO.setFullName(user.getFullname());
                 userDTO.setMajorId(user.getMajor().getId());
                 userDTO.setMajorName(user.getMajor().getName());
+                userDTO.setFee(user.getFee());
                 userDTOS.add(userDTO);
             }
             return ResponseEntity.ok().body(new SuccessResponse<>("Get data success",userDTOS));

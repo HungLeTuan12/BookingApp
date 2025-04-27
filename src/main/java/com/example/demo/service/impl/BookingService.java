@@ -14,11 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
@@ -40,6 +42,8 @@ public class BookingService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yyyy");
 
     // Lưu trữ mã OTP tạm thời: email -> {otp, expirationTime}
     private final Map<String, OtpData> otpStore = new HashMap<>();
@@ -223,24 +227,29 @@ public class BookingService {
     }
 
     public Booking bookSchedule(BookingRequest request) {
-
+        // Kiểm tra lịch có tồn tại không
         Schedule schedule = scheduleRepo.findById(request.getScheduleId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lịch!"));
 
+        // Kiểm tra khung giờ có khớp không
         if (!schedule.getHour().getId().equals(request.getHourId())) {
             throw new RuntimeException("Khung giờ không khớp với lịch này!");
         }
 
+        // Kiểm tra lịch đã được đặt chưa
         if (schedule.getIsBooked()) {
             throw new RuntimeException("Khung giờ " + schedule.getHour().getName() + " đã được đặt!");
         }
 
+        // Lấy thông tin bệnh nhân và bác sĩ
         User patient = userRepo.findById(request.getPatientId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bệnh nhân!"));
         User doctor = schedule.getDoctor();
 
+        // Tạo token
         String token = generateMeaningfulToken(request);
 
+        // Tạo đối tượng Booking
         Booking booking = new Booking();
         booking.setFullName(request.getFullName());
         booking.setDob(request.getDob());
@@ -252,22 +261,25 @@ public class BookingService {
         booking.setIdHour(request.getHourId());
         booking.setStatus(Status.PENDING);
         booking.setNote(request.getNote());
-        if(request.getToken().isEmpty() || request.getToken().equals("")) {
+        if (request.getToken() == null || request.getToken().isEmpty()) {
             booking.setToken(token);
-        }
-        else {
+        } else {
             booking.setToken(request.getToken());
         }
         booking.setUser(doctor);
         booking.setSchedule(schedule);
 
+        // Lưu lịch hẹn
         booking = bookingRepo.save(booking);
 
+        // Cập nhật trạng thái lịch
         schedule.setIsBooked(true);
         scheduleRepo.save(schedule);
 
         return booking;
     }
+
+
 
     public List<Booking> getPendingBookingsByDoctor(Long doctorId) {
         return bookingRepo.findByUserIdAndStatus(doctorId, Status.PENDING);
@@ -403,5 +415,96 @@ public class BookingService {
             String searchTerm) {
         return bookingRepo.findBookingsByDoctorWithFilters(
                 doctorId, status, startDate, endDate, searchTerm != null ? searchTerm.trim() : null);
+    }
+
+    public void sendAppointmentReminderEmail(String to, String patientName, String doctorName, String date, String timeSlot) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+        helper.setTo(to);
+        helper.setSubject("Nhắc nhở lịch hẹn khám bệnh");
+        String htmlBody = "<h2 style=\"color: #2c3e50; font-family: Arial, sans-serif;\">Nhắc Nhở Lịch Hẹn Khám Bệnh</h2>" +
+                "<p style=\"font-family: Arial, sans-serif; color: #333;\">Kính gửi: <strong style=\"color: #2c3e50;\">" + patientName + "</strong>,</p>" +
+                "<p style=\"font-family: Arial, sans-serif; color: #333;\">Phòng khám chúng tôi trân trọng nhắc nhở quý khách về lịch hẹn khám bệnh sắp tới với các thông tin chi tiết như sau:</p>" +
+                "<table style=\"font-family: Arial, sans-serif; color: #333; margin: 15px 0; border-collapse: collapse; width: 100%; max-width: 500px;\">" +
+                "<tr style=\"background-color: #f4f7f9;\">" +
+                "<td style=\"padding: 10px; border: 1px solid #e0e0e0;\"><strong>Bác sĩ phụ trách:</strong></td>" +
+                "<td style=\"padding: 10px; border: 1px solid #e0e0e0;\">" + doctorName + "</td>" + // Tạm hardcode, có thể lấy động từ bảng Doctor
+                "</tr>" +
+                "<tr>" +
+                "<td style=\"padding: 10px; border: 1px solid #e0e0e0;\"><strong>Ngày khám:</strong></td>" +
+                "<td style=\"padding: 10px; border: 1px solid #e0e0e0;\">" + date + "</td>" +
+                "</tr>" +
+                "<tr style=\"background-color: #f4f7f9;\">" +
+                "<td style=\"padding: 10px; border: 1px solid #e0e0e0;\"><strong>Khung giờ:</strong></td>" +
+                "<td style=\"padding: 10px; border: 1px solid #e0e0e0;\">" + timeSlot + "</td>" +
+                "</tr>" +
+                "</table>" +
+                "<p style=\"font-family: Arial, sans-serif; color: #333;\">Quý khách vui lòng đến đúng giờ để đảm bảo lịch khám diễn ra thuận lợi. Nếu có nhu cầu thay đổi lịch hẹn, xin vui lòng liên hệ với chúng tôi qua:</p>" +
+                "<ul style=\"font-family: Arial, sans-serif; color: #333;\">" +
+                "<li>Email: <a href=\"mailto:support@phongkham.com\" style=\"color: #007bff;\">support@phongkham.com</a></li>" +
+                "<li>Số điện thoại: <a href=\"tel:0123456789\" style=\"color: #007bff;\">0123 456 789</a></li>" +
+                "</ul>" +
+                "<p style=\"font-family: Arial, sans-serif; color: #333;\">Chúng tôi rất mong được phục vụ quý khách.</p>" +
+                "<p style=\"font-family: Arial, sans-serif; color: #333;\">Trân trọng,</p>" +
+                "<p style=\"font-family: Arial, sans-serif; color: #333; font-weight: bold;\">Phòng Khám Sức Khỏe Toàn Diện</p>" +
+                "<p style=\"font-family: Arial, sans-serif; font-size: 12px; color: #777; border-top: 1px solid #e0e0e0; padding-top: 10px;\">" +
+                "Đây là email tự động, vui lòng không trả lời trực tiếp. Nếu có thắc mắc, xin liên hệ qua thông tin trên." +
+                "</p>";
+        helper.setText(htmlBody, true);
+
+        mailSender.send(message);
+    }
+
+    // Chạy hàng ngày lúc 8h sáng
+    public void sendAppointmentReminders() {
+        // Lấy ngày hôm nay và ngày mai
+        Date today = new Date();
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(today);
+        calendar.add(Calendar.DAY_OF_MONTH, 1); // Thêm 1 ngày để lấy ngày mai
+        Date tomorrow = calendar.getTime();
+
+        // Đặt giờ, phút, giây, mili giây về 0 để so sánh chính xác ngày
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        tomorrow = calendar.getTime();
+
+        // Truy vấn danh sách lịch hẹn của ngày mai với trạng thái SUCCESS
+        List<Booking> appointments = bookingRepo.findByDateAndStatusSuccess(tomorrow);
+
+        if (appointments.isEmpty()) {
+            throw new RuntimeException("Không có lịch hẹn nào cho ngày mai với trạng thái SUCCESS.");
+        }
+
+        // Gửi email nhắc nhở cho từng bệnh nhân
+        for (Booking booking : appointments) {
+            try {
+                // Lấy thông tin khung giờ từ bảng Hour
+                Optional<Hour> hourOptional = hourRepo.findById(booking.getIdHour());
+                String timeSlot = hourOptional.isPresent() ? hourOptional.get().getName() : "N/A";
+
+                // Lấy thông tin bệnh nhân và bác sĩ
+                String patientEmail = booking.getEmail();
+                String patientName = booking.getFullName();
+                String doctorName = booking.getUser().getFullname(); // Giả định User có trường fullName
+                String date = dateFormatter.format(booking.getDate());
+
+                // Gửi email
+                sendAppointmentReminderEmail(
+                        patientEmail,
+                        patientName,
+                        doctorName,
+                        date,
+                        timeSlot
+                );
+                System.out.println("Đã gửi email nhắc nhở cho: " + patientEmail);
+            } catch (Exception e) {
+                System.err.println("Lỗi khi gửi email cho " + booking.getEmail() + ": " + e.getMessage());
+                // Tiếp tục với lịch hẹn tiếp theo, không dừng lại
+            }
+        }
     }
 }

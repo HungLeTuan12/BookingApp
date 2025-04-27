@@ -25,4 +25,15 @@ public interface UserRepo extends JpaRepository<User, Long> {
     List<User> findByRoleAndMajor(Role doctorRole, Major major);
     @Query("SELECT s FROM User s WHERE s.role.id = 2")
     List<User> findAllByRole();
+
+    // Đếm số bác sĩ
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role.name = 'ROLE_DOCTOR'")
+    long countDoctors();
+
+    // Đếm số bác sĩ theo chuyên khoa
+    @Query("SELECT m.name, COUNT(u) as count " +
+            "FROM User u JOIN u.major m " +
+            "WHERE u.role.name = 'ROLE_DOCTOR' " +
+            "GROUP BY m.id, m.name")
+    List<Object[]> countDoctorsBySpecialty();
 }

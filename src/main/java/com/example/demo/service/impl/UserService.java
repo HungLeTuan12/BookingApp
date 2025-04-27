@@ -165,13 +165,6 @@ public class UserService implements IUserService {
     @Transactional
     public void deleteDoctor(Long id) {
         User user = userRepo.findById(id).get();
-//        if(user.isEnabled()==true) {
-//            user.setEnabled(false);
-//            userRepo.save(user);
-//        }
-//        else {
-//            userRepo.deleteById(id);
-//        }
         userRepo.deleteById(id);
     }
 
@@ -180,6 +173,7 @@ public class UserService implements IUserService {
         user.setUsername(userDTO.getUserName());
         user.setGmail(userDTO.getEmail());
         user.setPhone(userDTO.getPhone());
+        user.setFee(userDTO.getFee());
         user.setDescription(userDTO.getDescription());
     }
 
@@ -192,7 +186,7 @@ public class UserService implements IUserService {
             majorModel.setName(user.getMajor().getName());
         }
         UserModel userModel = new UserModel(user.getId(),user.getAvatar(),user.getFullname(),user.getUsername(),user.getPhone(),
-                user.getGmail(), user.getDescription(), user.getRole().getId(),user.isEnabled(),majorModel,user.getTrangthai());
+                user.getGmail(), user.getDescription(), user.getRole().getId(),user.isEnabled(),majorModel,user.getTrangthai(), user.getFee());
         return userModel;
     }
 }

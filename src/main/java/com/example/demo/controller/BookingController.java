@@ -2,9 +2,11 @@ package com.example.demo.controller;
 import com.example.demo.constant.Status;
 import com.example.demo.dto.dto.BookingDTO;
 import com.example.demo.dto.request.BookingRequest;
+import com.example.demo.dto.response.StatsResponse;
 import com.example.demo.entity.Booking;
 import com.example.demo.repository.BookingRepo;
 import com.example.demo.service.impl.BookingService;
+import com.example.demo.service.impl.StatsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,8 @@ public class BookingController {
     private BookingService bookingService;
     @Autowired
     private BookingRepo bookingRepo;
+    @Autowired
+    private StatsService statsService;
 
     @GetMapping("/by-token-filtered")
     public ResponseEntity<List<Booking>> getBookingsByTokenFiltered(
@@ -149,6 +153,16 @@ public class BookingController {
         }
     }
 
+    @PostMapping("/reminders/send")
+    public ResponseEntity<String> sendAppointmentReminders() {
+        try {
+            bookingService.sendAppointmentReminders();
+            return ResponseEntity.ok("Email nhắc lịch hẹn đã được gửi đến bệnh nhân.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi khi gửi email nhắc nhở: " + e.getMessage());
+        }
+    }
+
     // API để bác sĩ từ chối lịch hẹn
     @PostMapping("/reject/{bookingId}")
     public ResponseEntity<?> rejectBooking(@PathVariable Long bookingId) {
@@ -256,6 +270,11 @@ public class BookingController {
         bookingRepo.save(booking);
 
         return ResponseEntity.ok("Cập nhật trạng thái thành công!");
+    }
+    @GetMapping("/stats")
+    public ResponseEntity<StatsResponse> getStats() {
+        StatsResponse stats = statsService.getStats();
+        return ResponseEntity.ok(stats);
     }
 
     private static class BookingResponse {

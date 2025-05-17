@@ -337,7 +337,7 @@ public class BookingService {
                     "<tr>" +
                     "<td style='background-color: #dc3545; text-align: center; padding: 20px; border-top-left-radius: 8px; border-top-right-radius: 8px;'>" +
                     "<h1 style='color: #ffffff; margin: 0; font-size: 24px;'>Thông Báo Từ Chối Lịch Hẹn</h1>" +
-                    "<p style='color: #ffe6e6; margin: 5px 0 0;'>Bệnh Viện Đa Khoa XYZ</p>" +
+                    "<p style='color: #ffe6e6; margin: 5px 0 0;'>Bệnh Viện Đa Khoa Diệp Sinh</p>" +
                     "</td>" +
                     "</tr>" +
                     "<tr>" +

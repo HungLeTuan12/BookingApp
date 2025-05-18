@@ -69,7 +69,7 @@ public class User {
     @JsonIgnore
     private Major major;
 
-    @Column(nullable = false, columnDefinition = "DECIMAL(10,2) DEFAULT 0.00")
+    @Column(columnDefinition = "DECIMAL(10,2) DEFAULT 0.00")
     private BigDecimal fee; // Thêm trường chi phí khám
 
     @OneToMany(mappedBy = "user",fetch = FetchType.LAZY,cascade = CascadeType.ALL)
